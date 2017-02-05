@@ -3,21 +3,116 @@
 <head>
   <meta charset="utf-8" />
   <title>Gamedev Phaser Workshop - lesson 01: Initialize the framework</title>
-  <style>* { padding: 0; margin: 0; }</style>
+  <style>* { padding: 0; margin: 0; background-color: #ff00ff}</style>
   <script src="js/phaser.min.js"></script>
 </head>
 <body>
 <script>
-  var game = new Phaser.Game(480, 320, Phaser.AUTO, null, {
+  var game = new Phaser.Game(320, 568, Phaser.AUTO, null, {
     preload: preload, create: create, update: update
   });
+  var caroline;
+  var meow;
+  var boop;
+  var ball;
+  var paddle;
+  var bricks, newBrick, brickInfo;
   function preload() {
-    console.log(`preload`);
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+    game.scale.pageAlignHorizontally = true;
+    game.scale.pageAlignVertically = true;
+    game.stage.backgroundColor = `#ff00ff`;
+    game.load.image(`ball`, `img/ball.png`);
+    game.load.image(`paddle`, `img/paddle.png`);
+    game.load.image(`brick`, `img/brick.png`);
+
+    game.load.audio(`caroline`, `sfx/caroline.wav`);
+    game.load.audio(`meow`, `sfx/meow.wav`);
+    game.load.audio(`boop`, `sfx/boop.wav`);
   }
   function create() {
-    console.log(`create`);
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    ball = game.add.sprite(game.world.width * 0.5, game.world.height * 0.87, `ball`);
+    ball.anchor.set(0.5);
+    game.physics.enable(ball, Phaser.Physics.ARCADE);
+    ball.body.collideWorldBounds = true;
+    game.physics.arcade.checkCollision.down = false;
+    ball.checkWorldBounds = true;
+    ball.events.onOutOfBounds.add(() => {
+      alert('game over!');
+      location.reload();
+    }, this);
+    ball.body.velocity.set(150, -150);
+    ball.body.bounce.set(1);
+    ball.body.onWorldBounds = new Phaser.Signal();
+    ball.body.onWorldBounds.add(() => {
+      boop.play();
+    }, this);
+
+    paddle = game.add.sprite(game.world.width * 0.5, game.world.height * 0.9, `paddle`);
+    game.physics.enable(paddle, Phaser.Physics.ARCADE);
+    paddle.anchor.set(0.5, 0.5);
+    paddle.body.immovable = true;
+
+    caroline = game.add.audio(`caroline`);
+    meow = game.add.audio(`meow`);
+    boop = game.add.audio(`boop`);
+
+    initBricks();
   }
   function update() {
+    game.physics.arcade.collide(ball, paddle, ballHitPaddle);
+    game.physics.arcade.collide(ball, bricks, ballHitBrick);
+    paddle.x = game.input.x || game.world.width * 0.5;
+  }
+  function ballHitPaddle(ball, paddle) {
+    game.add.tween(paddle.scale).to({x:1.3, y:1.3}, 150, Phaser.Easing.Circular.Out, true, 0, 0, true);
+    caroline.play();
+  }
+  function ballHitBrick(ball, brick) {
+    game.add.tween(brick.scale).to({x:0, y:0}, 200, Phaser.Easing.Linear.Out, true, 50).onComplete.addOnce(() => {
+      brick.kill();
+      var count_alive = 0;
+       for (i = 0; i < bricks.children.length; i++) {
+         if (bricks.children[i].alive == true) {
+           count_alive++;
+         }
+       }
+       if (count_alive == 0) {
+         alert('A winner is you!');
+         location.reload();
+       }
+    });
+    meow.play();
+  }
+  function initBricks() {
+    brickInfo = {
+        width: 48,
+        height: 16,
+        count: {
+            row: 6,
+            col: 6
+        },
+        offset: {
+            top: 22,
+            left: 36
+        },
+        padding: 1
+    };
+    bricks = game.add.group();
+    var brickX, brickY;
+    for(c=0; c<brickInfo.count.col; c++) {
+      for(r=0; r<brickInfo.count.row; r++) {
+        brickX = (r*(brickInfo.width+brickInfo.padding))+brickInfo.offset.left;
+        brickY = (c*(brickInfo.height+brickInfo.padding))+brickInfo.offset.top;
+        newBrick = game.add.sprite(brickX, brickY, 'brick');
+        game.physics.enable(newBrick, Phaser.Physics.ARCADE);
+        newBrick.body.immovable = true;
+        newBrick.anchor.set(0.5);
+        bricks.add(newBrick);
+      }
+    }
   }
 </script>
 <script>
